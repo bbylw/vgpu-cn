@@ -12,7 +12,7 @@ const H = 360;
 const jobs: Array<[string, string, number]> = [
   ['voronoi', voronoiShader, 3.0],
   ['nebula', nebulaShader, 6.0],
-  ['gyroid', gyroidShader, 2.5],
+  ['gyroid', gyroidShader, 5.0],
 ];
 
 const gpu = await init();
@@ -22,7 +22,11 @@ for (const [name, src, time] of jobs) {
   fx.draw(colorTarget);
   const pixels = await colorTarget.color.read({ mipLevel: 0, region: 'all' });
   const png = new PNG({ width: W, height: H });
-  png.data = Buffer.from(pixels);
+  // GPU readback 行序为自底向上，翻转为 PNG 的自顶向下
+  for (let y = 0; y < H; y++) {
+    const src = (H - 1 - y) * W * 4;
+    png.data.set(pixels.subarray(src, src + W * 4), y * W * 4);
+  }
   mkdirSync('public/examples', { recursive: true });
   writeFileSync(`public/examples/${name}.png`, PNG.sync.write(png));
   console.log(`wrote public/examples/${name}.png (${pixels.length} bytes read)`);

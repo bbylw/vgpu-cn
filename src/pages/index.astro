@@ -163,7 +163,7 @@ frameLoop(gpu, (f) => {'{'}
           />
           <div class="px-5 pb-5">
             <h3 class="font-semibold">流体细胞</h3>
-            <p class="mt-2 text-sm leading-relaxed text-neutral-400" set:html={inline('动态 Voronoi 镶嵌，发光边界随 `time` 游走。')} />
+            <p class="mt-2 text-sm leading-relaxed text-neutral-400" set:html={inline('F2−F1 细胞膜裹着半透明胞质，每格一枚偏心细胞核与核仁，暖光显微镜下的组织切片。')} />
           </div>
         </div>
         <div class="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition hover:border-white/20">
@@ -174,8 +174,8 @@ frameLoop(gpu, (f) => {'{'}
             label="回旋体实时演示"
           />
           <div class="px-5 pb-5">
-            <h3 class="font-semibold">无限回旋体</h3>
-            <p class="mt-2 text-sm leading-relaxed text-neutral-400">72 步 gyroid SDF 光线步进，菲涅尔边缘光，相机环绕。</p>
+            <h3 class="font-semibold">回旋晶格</h3>
+            <p class="mt-2 text-sm leading-relaxed text-neutral-400">128 步光线步进 gyroid SDF 晶格球，环境光遮蔽 + 暖色主光 + 菲涅尔边缘光，相机缓慢环绕。</p>
           </div>
         </div>
         <div class="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition hover:border-white/20">
@@ -187,7 +187,7 @@ frameLoop(gpu, (f) => {'{'}
           />
           <div class="px-5 pb-5">
             <h3 class="font-semibold">电浆星云</h3>
-            <p class="mt-2 text-sm leading-relaxed text-neutral-400">5 层分形噪声域扭曲，暗底烧出橙色星云，点缀闪烁星点。</p>
+            <p class="mt-2 text-sm leading-relaxed text-neutral-400">5 层域扭曲分形噪声，高对比余烬星云，双层闪烁星点。</p>
           </div>
         </div>
         {examples.map((e) => (
