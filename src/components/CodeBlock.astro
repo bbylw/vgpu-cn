@@ -1,0 +1,21 @@
+---
+import { Code } from 'astro:components';
+import CopyButton from './CopyButton';
+
+interface Props {
+  code: string;
+  lang: 'ts' | 'bash' | 'wgsl' | 'json';
+}
+
+const { code, lang } = Astro.props;
+---
+
+<div class="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition hover:border-white/20">
+  <div class="flex items-center justify-between border-b border-white/10 px-4 py-2">
+    <span class="font-mono text-xs uppercase tracking-widest text-neutral-400">{lang}</span>
+    <CopyButton client:load text={code} />
+  </div>
+  <div class="overflow-x-auto p-4 text-sm [&_pre]:bg-transparent! [&_pre]:text-[13px]">
+    <Code code={code} lang={lang === 'wgsl' ? 'ts' : lang} theme="vitesse-dark" />
+  </div>
+</div>

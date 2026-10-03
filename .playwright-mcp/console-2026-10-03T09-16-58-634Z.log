@@ -1,0 +1,16 @@
+[     240ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ https://vgsite.localhost/node_modules/.vite/deps/client-BQx9bLZI.js?v=a9d23238:15804
+[    2805ms] TypeError: setForTime is not a function
+    at https://vgsite.localhost/src/components/ShaderStage.tsx:22:13
+    at FrameRunner.frame (https://vgsite.localhost/node_modules/.vite/deps/vgpu.js?v=440ea27c:8888:6)
+    at tick (https://vgsite.localhost/node_modules/.vite/deps/vgpu.js?v=440ea27c:8926:11)
+[    2822ms] TypeError: setForTime is not a function
+    at https://vgsite.localhost/src/components/ShaderStage.tsx:22:13
+    at FrameRunner.frame (https://vgsite.localhost/node_modules/.vite/deps/vgpu.js?v=440ea27c:8888:6)
+    at tick (https://vgsite.localhost/node_modules/.vite/deps/vgpu.js?v=440ea27c:8926:11)
+[    2823ms] TypeError: setForTime is not a function
+    at https://vgsite.localhost/src/components/ShaderStage.tsx:22:13
+    at FrameRunner.frame (https://vgsite.localhost/node_modules/.vite/deps/vgpu.js?v=440ea27c:8888:6)
+    at tick (https://vgsite.localhost/node_modules/.vite/deps/vgpu.js?v=440ea27c:8926:11)
+[   26045ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ https://vgsite.localhost/node_modules/.vite/deps/client-BQx9bLZI.js?v=a9d23238:15804
+[   32331ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ https://vgsite.localhost/node_modules/.vite/deps/client-BQx9bLZI.js?v=a9d23238:15804
+[   36824ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ https://vgsite.localhost/node_modules/.vite/deps/client-BQx9bLZI.js?v=a9d23238:15804

@@ -1,0 +1,256 @@
+---
+import Layout from '../layouts/Layout.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import ShaderStage from '../components/ShaderStage';
+import { voronoiShader, nebulaShader, gyroidShader } from '../components/shaders';
+
+const inline = (text: string) =>
+  text.replace(/`([^`]+)`/g, '<code class="rounded bg-white/10 px-1 py-0.5 font-mono text-[0.85em]">$1</code>');
+
+const features = [
+  { title: '带类型的 WGSL 导入', body: '`.wgsl` 文件像 TypeScript 模块一样导入和导出，反射机制自动保持绑定名称、类型与布局正确，无需手写声明。' },
+  { title: '唯一的 `Gpu` 上下文', body: '`init()` 返回统一句柄；每个入口点（`draw`、`effect`、`frame`、`surface`、`target`……）都以它为第一个参数，没有隐藏的全局状态。' },
+  { title: '为精简而设计', body: '未使用的声明在压缩前被剪除，一个完整的全屏效果压缩后仅 25 KB（gzip），体积预算由 CI 强制把关。' },
+  { title: '默认多运行时', body: '浏览器、无头 Node（`vgpu/node`，基于 Dawn）以及为测试和 CI 构建的确定性 mock（`vgpu/mock`）共用同一套公开 API。' },
+  { title: '显式帧', body: '`frame(gpu, (f) => f.pass(target, effect))` —— 通道、清屏与绘制都是显式调用，绝不存在隐式的场景图状态。' },
+  { title: '面向 Agent', body: '文档、示例画廊与着色器校验均可通过 CLI 运行，vgpu.sh 还发布了供 LLM 消费的 agents.md 与 llms.txt。' },
+];
+
+const packages = [
+  { name: 'vgpu', desc: '公开主 API：`init`、`draw`、`compute`、`effect`、`frame`、`bundle`、`target`、`uniforms`，以及 `scene` 与 `core` 子路径。' },
+  { name: '@vgpu/cli', desc: '`vgpu` 命令行二进制：文档、着色器 `check`、`doctor`，以及 Dawn/软件渲染器配置。' },
+  { name: '@vgpu/core', desc: '`vgpu/core` 背后的底层 WebGPU 封装（`Device`、`Buffer`、`Texture`、绑定组）。' },
+  { name: '@vgpu/wgsl', desc: '在打包前将 `.wgsl` 文件转换为 JS 模块，并解析 WGSL 到 WGSL 的导入。' },
+  { name: '@vgpu/wgsl-std', desc: '标准 WGSL 工具模块（数学、颜色、采样、噪声、哈希……）。' },
+  { name: '@vgpu/adapter-node', desc: '`vgpu/node` 使用的 Dawn 支撑适配器。' },
+  { name: '@vgpu/adapter-mock', desc: '`vgpu/mock` 使用的确定性 mock 适配器。' },
+  { name: '@vgpu/render', desc: '位于主渲染表面之外、轻量的编辑/检查/工具/性能辅助模块。' },
+];
+
+const install = `pnpm add vgpu
+pnpm add -D @webgpu/types`;
+
+const quickstart = `import { clock, init, effect, frameLoop, surface } from "vgpu";
+import waveShader from "./wave.wgsl";
+
+const gpu = await init();
+const canvasSurface = surface(gpu, canvas, { dpr: [1, 2] });
+const wave = effect(gpu, waveShader, { set: { speed: 2 } });
+
+const time = clock(gpu);
+frameLoop(gpu, (frame) => {
+  wave.set({ time: time.time });
+  frame.pass(canvasSurface, wave);
+});`;
+
+const nodeExample = `import { draw, frame, init, target } from "vgpu/node";
+import triangleShader from "./triangle.wgsl";
+
+const gpu = await init();
+const colorTarget = target(gpu, { size: [256, 256], format: "rgba8unorm" });
+const triangle = draw(gpu, { shader: triangleShader });
+
+frame(gpu, (f) => f.pass(colorTarget, triangle));
+const pixels = await colorTarget.read();
+gpu.dispose();`;
+
+const wgslExample = `// grain.wgsl
+import { hash2 } from "@vgpu/wgsl-std/hash";
+
+export fn grain(uv: vec2f, time: f32) -> f32 {
+  return hash2(uv * time).x;
+}`;
+
+const cliDocs = `npx vgpu docs cat getting-started.md
+npx vgpu docs find effect`;
+
+const cliExamples = `npx vgpu examples search "raymarching"
+npx vgpu examples pull <id> --out ./example`;
+
+const cliMcp = `npx vgpu mcp
+npx vgpu mcp --project-from-cwd`;
+
+const examples = [
+  {
+    title: '无头渲染',
+    desc: '星云着色器经 `vgpu/node` 在 Dawn 下无头渲染的真实产物（`bun scripts/render-examples.ts` 生成）。',
+    img: '/examples/nebula.png',
+    cmd: 'npx vgpu examples pull headless-png --out ./headless-png',
+  },
+];
+---
+
+<Layout>
+  <header class="sticky top-0 z-10 border-b border-white/5 bg-[#131311]/70 backdrop-blur">
+    <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <a href="#top" class="font-mono text-lg font-bold tracking-tight">vgpu<span class="text-accent">.</span></a>
+      <div class="flex gap-5 text-sm text-neutral-400">
+        <a href="#examples" class="transition hover:text-white">示例</a>
+        <a href="#features" class="transition hover:text-white">特性</a>
+        <a href="#quickstart" class="transition hover:text-white">快速开始</a>
+        <a href="#packages" class="transition hover:text-white">包</a>
+        <a href="#agents" class="transition hover:text-white">Agent</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="top" class="mx-auto max-w-6xl px-6">
+    <section class="grid gap-10 py-20 md:grid-cols-[1.4fr_1fr] md:items-center">
+      <div>
+        <div class="mb-5 flex gap-2 text-xs">
+          <span class="rise rounded-full border border-white/15 px-3 py-1 text-neutral-300" style="--i:0">LABS PRODUCT</span>
+          <span class="rise rounded-full border border-white/15 px-3 py-1 text-neutral-300" style="--i:1">MIT License</span>
+          <span class="rise rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-accent" style="--i:2">WebGPU</span>
+        </div>
+        <h1 class="rise text-6xl font-bold tracking-tighter md:text-7xl" style="--i:1">vgpu</h1>
+        <p class="rise mt-5 max-w-[60ch] text-lg leading-relaxed text-neutral-400" style="--i:2">
+          面向 WebGPU 的 TypeScript 库：带类型的着色器导入、极简的 GPU 优先 API，同一份代码可在浏览器、无头 Node 以及测试套件中运行。
+        </p>
+        <div class="rise mt-8 flex gap-4" style="--i:3">
+          <a href="#quickstart" class="rounded-lg bg-accent px-6 py-3 font-medium text-[#131311] transition hover:scale-[1.03] active:scale-[0.97]">快速开始</a>
+          <a href="https://vgpu.sh" class="rounded-lg border border-white/15 px-6 py-3 transition hover:border-white/40">完整文档 vgpu.sh ↗</a>
+        </div>
+      </div>
+      <div class="rise hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] md:block" style="--i:4">
+        <pre class="font-mono text-sm leading-relaxed text-neutral-300"><code><span class="text-accent">const</span> gpu = <span class="text-accent">await</span> init();
+<span class="text-accent">const</span> wave = effect(gpu, shader);
+
+frameLoop(gpu, (f) => {'{'}
+  wave.set({'{'} time: t {'}'});
+  f.pass(surface, wave);
+{'}'});</code></pre>
+      </div>
+    </section>
+
+    <section id="features" class="pb-16">
+      <h2 class="mb-6 text-2xl font-bold tracking-tight">核心特性</h2>
+      <div class="divide-y divide-white/5 border-y border-white/5">
+        {features.map((f) => (
+          <div class="grid gap-2 py-5 transition hover:bg-white/[0.02] md:grid-cols-[240px_1fr] md:gap-8">
+            <h3 class="font-semibold" set:html={inline(f.title)} />
+            <p class="text-sm leading-relaxed text-neutral-400" set:html={inline(f.body)} />
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section id="quickstart" class="space-y-6 pb-16">
+      <h2 class="text-2xl font-bold">快速开始</h2>
+      <CodeBlock code={install} lang="bash" />
+      <CodeBlock code={quickstart} lang="ts" />
+      <p class="text-sm leading-relaxed text-neutral-400" set:html={inline('`init()` 获取适配器与设备并返回唯一的 `Gpu` 上下文；其余入口点都以它为第一个参数。`surface` 将画布封装为渲染目标并保持尺寸同步，设备像素比限制在 1 到 2 之间。`effect` 将着色器编译为全屏效果，uniform 可通过 WGSL 名称经由 `set()` 寻址——写入立即生效。')} />
+
+      <h3 class="pt-4 text-xl font-semibold">Node 快速开始</h3>
+      <p class="text-sm text-neutral-400">同一套 API 可在无头环境下针对 Dawn 支撑的设备运行：</p>
+      <CodeBlock code={nodeExample} lang="ts" />
+      <p class="text-sm text-neutral-400" set:html={inline('`vgpu/mock` 会为同一份代码换上确定性的软件适配器，因此测试永远不需要真实 GPU。')} />
+
+      <h3 class="pt-4 text-xl font-semibold">带类型导入的 WGSL 模块</h3>
+      <p class="text-sm text-neutral-400" set:html={inline('`@vgpu/wgsl-std` 以具名导出提供可复用的声明（哈希、噪声、颜色、采样……），任何 `.wgsl` 文件都可以导出自己的 `fn`、`struct` 或 `const`：')} />
+      <CodeBlock code={wgslExample} lang="wgsl" />
+    </section>
+
+    <section id="examples" class="space-y-6 pb-16">
+      <h2 class="text-2xl font-bold tracking-tight">创意示例</h2>
+      <p class="text-sm text-neutral-400" set:html={inline('以下示例均可从 CLI 拉取源码本地运行，完整列表见 `npx vgpu examples search`。')} />
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition hover:border-white/20">
+          <ShaderStage
+            client:only="react"
+            shader={voronoiShader}
+            initialSet={{ params: { time: 0 } }}
+            label="流体细胞实时演示"
+          />
+          <div class="px-5 pb-5">
+            <h3 class="font-semibold">流体细胞</h3>
+            <p class="mt-2 text-sm leading-relaxed text-neutral-400" set:html={inline('动态 Voronoi 镶嵌，发光边界随 `time` 游走。')} />
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition hover:border-white/20">
+          <ShaderStage
+            client:only="react"
+            shader={gyroidShader}
+            initialSet={{ params: { time: 0 } }}
+            label="回旋体实时演示"
+          />
+          <div class="px-5 pb-5">
+            <h3 class="font-semibold">无限回旋体</h3>
+            <p class="mt-2 text-sm leading-relaxed text-neutral-400">72 步 gyroid SDF 光线步进，菲涅尔边缘光，相机环绕。</p>
+          </div>
+        </div>
+        <div class="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition hover:border-white/20">
+          <ShaderStage
+            client:only="react"
+            shader={nebulaShader}
+            initialSet={{ params: { time: 0 } }}
+            label="电浆星云实时演示"
+          />
+          <div class="px-5 pb-5">
+            <h3 class="font-semibold">电浆星云</h3>
+            <p class="mt-2 text-sm leading-relaxed text-neutral-400">5 层分形噪声域扭曲，暗底烧出橙色星云，点缀闪烁星点。</p>
+          </div>
+        </div>
+        {examples.map((e) => (
+          <div class="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition hover:border-white/20">
+            <img src={e.img} alt={e.title} width="640" height="360" loading="lazy" class="aspect-video w-full object-cover" />
+            <div class="p-5">
+            <h3 class="font-semibold" set:html={inline(e.title)} />
+            <p class="mt-2 text-sm leading-relaxed text-neutral-400" set:html={inline(e.desc)} />
+            <code class="mt-4 block rounded-lg border border-white/5 bg-black/30 px-3 py-2 font-mono text-xs text-accent">{e.cmd}</code>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section id="docs" class="space-y-6 pb-16">
+      <h2 class="text-2xl font-bold">文档</h2>
+      <p class="text-sm leading-relaxed text-neutral-400">
+        完整文档托管于 vgpu.sh。先从入门指南开始，再阅读性能实践手册；交互式示例可在浏览器中运行。同样的指南与 API 参考也随包发布，可通过 CLI 完全离线运行：
+      </p>
+      <CodeBlock code={cliDocs} lang="bash" />
+    </section>
+
+    <section id="agents" class="space-y-6 pb-16">
+      <h2 class="text-2xl font-bold">Agent 资源</h2>
+      <p class="text-sm text-neutral-400">vgpu 既能由人操作，也能由编码 Agent 操作。示例画廊可从 CLI 检索：</p>
+      <CodeBlock code={cliExamples} lang="bash" />
+      <p class="text-sm text-neutral-400">支持 skill 的 Agent 可安装 vgpu 的轻量文档路由：</p>
+      <CodeBlock code={'npx skills add vercel-labs/vgpu'} lang="bash" />
+      <ul class="list-disc space-y-1 pl-6 text-sm text-neutral-400">
+        <li>Agent 就绪清单 —— Agent 应如何发现并使用 vgpu</li>
+        <li>llms.txt 与 llms-full.txt —— 面向 LLM 的文档索引与完整导出</li>
+        <li>示例发现 API —— 无需令牌、只读，由 OpenAPI 描述</li>
+        <li>MCP 指南 —— 将 Agent 接入公开只读端点，或运行本地 stdio</li>
+      </ul>
+      <CodeBlock code={cliMcp} lang="bash" />
+    </section>
+
+    <section id="packages" class="space-y-4 pb-16">
+      <h2 class="text-2xl font-bold">包</h2>
+      <p class="text-sm text-neutral-400" set:html={inline('这是一个 monorepo。公开入口是 `vgpu`，其余部分要么支撑它，要么独立发布。')} />
+      <div class="overflow-hidden rounded-xl border border-white/10">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-white/10 bg-white/5 text-left text-neutral-300">
+              <th class="px-4 py-3 font-semibold">包</th>
+              <th class="px-4 py-3 font-semibold">说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            {packages.map((p) => (
+              <tr class="border-b border-white/5 last:border-0 align-top transition hover:bg-white/[0.02]">
+                <td class="whitespace-nowrap px-4 py-3 font-mono text-neutral-200">{p.name}</td>
+                <td class="px-4 py-3 text-neutral-400" set:html={inline(p.desc)} />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-white/5 py-8 text-center text-sm text-neutral-500">
+    vgpu · MIT License · 完整文档与示例请访问 <a href="https://vgpu.sh" class="text-neutral-300 hover:text-white">vgpu.sh</a>
+  </footer>
+</Layout>
